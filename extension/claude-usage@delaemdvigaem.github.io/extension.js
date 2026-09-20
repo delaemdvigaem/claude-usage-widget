@@ -12,7 +12,9 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 const DATA_FILE = GLib.getenv('CLAUDE_USAGE_FILE') ??
     GLib.build_filenamev([GLib.get_user_cache_dir(), 'claude-usage.json']);
 const MARGIN = 24;
-const STALE_AFTER = 10 * 60; // seconds without a poller run before data is marked stale
+const STALE_AFTER = 10 * 60; // seconds without fresh data before the widget says so
+// errors that will not go away on the next poll are reported at once
+const PERSISTENT_ERRORS = ['token_expired', 'no_credentials'];
 const MIN_FILL = 8;
 
 const STRINGS = {
@@ -52,9 +54,14 @@ const STRINGS = {
     },
 };
 
+// first language from the system's preference list that we have, English otherwise
 function pickStrings() {
-    const isRu = GLib.get_language_names().some(l => l.startsWith('ru'));
-    return isRu ? STRINGS.ru : STRINGS.en;
+    for (const name of GLib.get_language_names()) {
+        const lang = name.split(/[_.@]/)[0].toLowerCase();
+        if (STRINGS[lang])
+            return STRINGS[lang];
+    }
+    return STRINGS.en;
 }
 
 function parseTime(iso) {
@@ -142,6 +149,10 @@ class UsageRow extends St.BoxLayout {
         this.add_child(this._reset);
     }
 
+    get severity() {
+        return this._severity;
+    }
+
     update(label, limit) {
         const percent = Number(limit.percent) || 0;
         const severity = severityClass(limit.severity, percent);
@@ -201,6 +212,21 @@ const MASCOT_POSES = {
         '..#############..',
         '....#.#...#.#....',
     ],
+    // in the look poses the eyes move into the upper half of the row and one cell sideways
+    'look-left': [
+        '..#.#######.###..',
+        '..#############..',
+        '#################',
+        '..#############..',
+        '....#.#...#.#....',
+    ],
+    'look-right': [
+        '..###.#######.#..',
+        '..#############..',
+        '#################',
+        '..#############..',
+        '....#.#...#.#....',
+    ],
 };
 const MASCOT_COLS = 17;
 const MASCOT_ROWS = 5;
@@ -254,6 +280,7 @@ class UsageWidget extends St.BoxLayout {
         this._strings = pickStrings();
         this._snapshot = null;
         this._lastPercents = {};
+        this._justReset = false;
 
         const header = new St.BoxLayout({style_class: 'claude-usage-header', x_expand: true});
         this._title = new St.Label({
@@ -299,7 +326,6 @@ class UsageWidget extends St.BoxLayout {
             weekly_scoped: scoped?.model ? s.weeklyModel.replace('%s', scoped.model) : s.weekly,
         };
 
-        // Clawd throws his arms up for one poll cycle when a limit has just reset
         let justReset = false;
         for (const [kind, row] of Object.entries(this._rows)) {
             row.visible = !!picked[kind];
@@ -314,7 +340,7 @@ class UsageWidget extends St.BoxLayout {
                 justReset = true;
             this._lastPercents[key] = percent;
         }
-        this._mascot.setPose(justReset ? 'arms-up' : 'default');
+        this._justReset = justReset;
         this._syncStatus();
     }
 
@@ -333,18 +359,43 @@ class UsageWidget extends St.BoxLayout {
         let problem = null;
         if (!snapshot || dataAt === null)
             problem = snapshot?.error ? s.errors[snapshot.error] ?? s.errors.default : s.noData;
-        else if (!snapshot.ok)
+        else if (!snapshot.ok && (PERSISTENT_ERRORS.includes(snapshot.error) || Date.now() - dataAt > STALE_AFTER * 1000))
             problem = s.errors[snapshot.error] ?? s.errors.default;
         else if (fetchedAt === null || Date.now() - fetchedAt > STALE_AFTER * 1000)
             problem = s.stale;
 
         // the header stays empty unless something is wrong
         this._status.text = problem ?? '';
-        for (const actor of [this._status, this._mascot]) {
-            if (problem)
-                actor.add_style_class_name('problem');
+        if (problem)
+            this._status.add_style_class_name('problem');
+        else
+            this._status.remove_style_class_name('problem');
+        this._syncMascot(!!problem);
+    }
+
+    // Clawd's mood: arms up for one poll cycle after a limit reset, a wary glance
+    // at the numbers once a bar is in warning, red on critical, grey when the
+    // data cannot be trusted
+    _syncMascot(problem) {
+        const severities = Object.values(this._rows)
+            .filter(row => row.visible)
+            .map(row => row.severity);
+        const critical = severities.includes('critical');
+        const wary = critical || severities.includes('warning');
+
+        let pose = 'default';
+        if (this._justReset)
+            pose = 'arms-up';
+        else if (wary && !problem)
+            pose = 'look-right';
+        this._mascot.setPose(pose);
+
+        const mood = problem ? 'problem' : critical ? 'critical' : null;
+        for (const name of ['problem', 'critical']) {
+            if (name === mood)
+                this._mascot.add_style_class_name(name);
             else
-                actor.remove_style_class_name('problem');
+                this._mascot.remove_style_class_name(name);
         }
     }
 });

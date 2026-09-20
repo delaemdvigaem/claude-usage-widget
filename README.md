@@ -24,4 +24,6 @@ Logs: `journalctl --user -o cat /usr/bin/gnome-shell` (extension), `journalctl -
 
 `./install.sh && tools/headless-test.sh` loads the extension in an isolated headless GNOME Shell (no logout needed) and writes screenshots of three states plus the shell log to `out/test/`.
 
+The interface is English or Russian, picked from the system language (first supported entry of the locale preference list, English otherwise).
+
 Clawd in the widget header is redrawn from the pixel art Claude Code shows in the terminal. Claude and Clawd belong to Anthropic; this project is not affiliated with Anthropic.

@@ -18,6 +18,10 @@
     color: #d77757;
 }
 
+.claude-usage-mascot.critical {
+    color: #f0616d;
+}
+
 /* greyed out while the numbers cannot be trusted */
 .claude-usage-mascot.problem {
     color: rgba(255, 255, 255, 0.35);
