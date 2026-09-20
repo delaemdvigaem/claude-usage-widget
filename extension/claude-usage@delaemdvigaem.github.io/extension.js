@@ -338,11 +338,8 @@ class UsageWidget extends St.BoxLayout {
         else if (fetchedAt === null || Date.now() - fetchedAt > STALE_AFTER * 1000)
             problem = s.stale;
 
-        const time = dataAt === null
-            ? null
-            : GLib.DateTime.new_from_unix_local(Math.floor(dataAt / 1000)).format('%H:%M');
-
-        this._status.text = [problem, time].filter(Boolean).join(' · ');
+        // the header stays empty unless something is wrong
+        this._status.text = problem ?? '';
         for (const actor of [this._status, this._mascot]) {
             if (problem)
                 actor.add_style_class_name('problem');
