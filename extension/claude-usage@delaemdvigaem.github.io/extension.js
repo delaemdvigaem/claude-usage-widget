@@ -8,7 +8,9 @@ import St from 'gi://St';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-const DATA_FILE = GLib.build_filenamev([GLib.get_user_cache_dir(), 'claude-usage.json']);
+// CLAUDE_USAGE_FILE lets a test shell read fixture data instead of the live cache
+const DATA_FILE = GLib.getenv('CLAUDE_USAGE_FILE') ??
+    GLib.build_filenamev([GLib.get_user_cache_dir(), 'claude-usage.json']);
 const MARGIN = 24;
 const STALE_AFTER = 10 * 60; // seconds without a poller run before data is marked stale
 const MIN_FILL = 8;
@@ -182,6 +184,65 @@ class UsageRow extends St.BoxLayout {
     }
 });
 
+// Clawd, pixel for pixel as Claude Code draws it in the terminal with quadrant
+// block characters. One grid cell is half a character cell, i.e. twice as tall as wide.
+const MASCOT_POSES = {
+    'default': [
+        '..#############..',
+        '..##.#######.##..',
+        '#################',
+        '..#############..',
+        '....#.#...#.#....',
+    ],
+    'arms-up': [
+        '..#############..',
+        '####.#######.####',
+        '.###############.',
+        '..#############..',
+        '....#.#...#.#....',
+    ],
+};
+const MASCOT_COLS = 17;
+const MASCOT_ROWS = 5;
+
+const Mascot = GObject.registerClass(
+class Mascot extends St.DrawingArea {
+    _init() {
+        super._init({
+            style_class: 'claude-usage-mascot',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._pose = 'default';
+    }
+
+    setPose(pose) {
+        if (this._pose === pose)
+            return;
+        this._pose = pose;
+        this.queue_repaint();
+    }
+
+    vfunc_repaint() {
+        const cr = this.get_context();
+        const [width, height] = this.get_surface_size();
+        // whole-pixel cells keep the pixel art crisp
+        const unit = Math.max(1, Math.floor(Math.min(width / MASCOT_COLS, height / (MASCOT_ROWS * 2))));
+        const x0 = Math.floor((width - unit * MASCOT_COLS) / 2);
+        const y0 = Math.floor((height - unit * MASCOT_ROWS * 2) / 2);
+        const color = this.get_theme_node().get_foreground_color();
+
+        cr.setSourceRGBA(color.red / 255, color.green / 255, color.blue / 255, color.alpha / 255);
+        MASCOT_POSES[this._pose].forEach((line, row) => {
+            for (let col = 0; col < MASCOT_COLS; col++) {
+                if (line[col] === '#')
+                    cr.rectangle(x0 + col * unit, y0 + row * unit * 2, unit, unit * 2);
+            }
+        });
+        cr.fill();
+        cr.$dispose();
+    }
+});
+
 const UsageWidget = GObject.registerClass(
 class UsageWidget extends St.BoxLayout {
     _init() {
@@ -192,6 +253,7 @@ class UsageWidget extends St.BoxLayout {
         });
         this._strings = pickStrings();
         this._snapshot = null;
+        this._lastPercents = {};
 
         const header = new St.BoxLayout({style_class: 'claude-usage-header', x_expand: true});
         this._title = new St.Label({
@@ -203,6 +265,8 @@ class UsageWidget extends St.BoxLayout {
             style_class: 'claude-usage-status',
             y_align: Clutter.ActorAlign.CENTER,
         });
+        this._mascot = new Mascot();
+        header.add_child(this._mascot);
         header.add_child(this._title);
         header.add_child(this._status);
         this.add_child(header);
@@ -235,11 +299,22 @@ class UsageWidget extends St.BoxLayout {
             weekly_scoped: scoped?.model ? s.weeklyModel.replace('%s', scoped.model) : s.weekly,
         };
 
+        // Clawd throws his arms up for one poll cycle when a limit has just reset
+        let justReset = false;
         for (const [kind, row] of Object.entries(this._rows)) {
             row.visible = !!picked[kind];
-            if (picked[kind])
-                row.update(labels[kind], picked[kind]);
+            if (!picked[kind])
+                continue;
+            row.update(labels[kind], picked[kind]);
+
+            // keyed by model too: switching to another model's limit is not a reset
+            const key = `${kind}:${picked[kind].model ?? ''}`;
+            const percent = Number(picked[kind].percent) || 0;
+            if (percent < this._lastPercents[key])
+                justReset = true;
+            this._lastPercents[key] = percent;
         }
+        this._mascot.setPose(justReset ? 'arms-up' : 'default');
         this._syncStatus();
     }
 
@@ -268,10 +343,12 @@ class UsageWidget extends St.BoxLayout {
             : GLib.DateTime.new_from_unix_local(Math.floor(dataAt / 1000)).format('%H:%M');
 
         this._status.text = [problem, time].filter(Boolean).join(' · ');
-        if (problem)
-            this._status.add_style_class_name('problem');
-        else
-            this._status.remove_style_class_name('problem');
+        for (const actor of [this._status, this._mascot]) {
+            if (problem)
+                actor.add_style_class_name('problem');
+            else
+                actor.remove_style_class_name('problem');
+        }
     }
 });
 

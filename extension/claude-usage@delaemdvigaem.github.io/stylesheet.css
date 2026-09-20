@@ -12,6 +12,17 @@
     spacing: 8px;
 }
 
+.claude-usage-mascot {
+    width: 34px;
+    height: 20px;
+    color: #d77757;
+}
+
+/* greyed out while the numbers cannot be trusted */
+.claude-usage-mascot.problem {
+    color: rgba(255, 255, 255, 0.35);
+}
+
 .claude-usage-title {
     font-size: 13px;
     font-weight: bold;
