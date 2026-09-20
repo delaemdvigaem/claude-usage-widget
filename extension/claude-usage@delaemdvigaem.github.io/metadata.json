@@ -1,0 +1,7 @@
+{
+  "uuid": "claude-usage@delaemdvigaem.github.io",
+  "name": "Claude Usage Widget",
+  "description": "Shows your Claude subscription limits (5-hour session, weekly, per-model) as a widget on the desktop background.",
+  "shell-version": ["49", "50"],
+  "url": "https://github.com/delaemdvigaem/claude-usage-widget"
+}

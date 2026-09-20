@@ -1,0 +1,66 @@
+.claude-usage-widget {
+    width: 300px;
+    padding: 16px 18px;
+    border-radius: 18px;
+    background-color: rgba(18, 18, 20, 0.74);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    color: rgba(255, 255, 255, 0.95);
+    spacing: 12px;
+}
+
+.claude-usage-header {
+    spacing: 8px;
+}
+
+.claude-usage-title {
+    font-size: 13px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.claude-usage-status {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.claude-usage-status.problem {
+    color: #f6c453;
+}
+
+.claude-usage-row {
+    spacing: 5px;
+}
+
+.claude-usage-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.claude-usage-percent {
+    font-size: 13px;
+    font-weight: bold;
+    font-feature-settings: "tnum";
+}
+
+.claude-usage-reset {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.claude-usage-track {
+    height: 8px;
+    border-radius: 4px;
+    background-color: rgba(255, 255, 255, 0.14);
+}
+
+.claude-usage-fill {
+    border-radius: 4px;
+}
+
+.claude-usage-fill.normal { background-color: #57c785; }
+.claude-usage-fill.warning { background-color: #f6c453; }
+.claude-usage-fill.critical { background-color: #f0616d; }
+
+.claude-usage-percent.normal { color: #57c785; }
+.claude-usage-percent.warning { color: #f6c453; }
+.claude-usage-percent.critical { color: #f0616d; }

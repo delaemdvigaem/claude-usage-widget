@@ -1,0 +1,10 @@
+[Unit]
+Description=Claude Usage Widget: poll Claude limits every 3 minutes
+
+[Timer]
+OnStartupSec=20s
+OnUnitActiveSec=3min
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

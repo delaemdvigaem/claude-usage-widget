@@ -1,0 +1,6 @@
+[Unit]
+Description=Claude Usage Widget: fetch Claude limits into ~/.cache/claude-usage.json
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env python3 %h/.local/share/gnome-shell/extensions/claude-usage@delaemdvigaem.github.io/poller.py
