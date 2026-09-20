@@ -212,17 +212,18 @@ const MASCOT_POSES = {
         '..#############..',
         '....#.#...#.#....',
     ],
-    // in the look poses the eyes move into the upper half of the row and one cell sideways
+    // Claude Code also lifts the eyes into the top half-row when Clawd looks aside;
+    // at icon size that reads as a chipped outline, so here they only move sideways
     'look-left': [
-        '..#.#######.###..',
         '..#############..',
+        '..#.#######.###..',
         '#################',
         '..#############..',
         '....#.#...#.#....',
     ],
     'look-right': [
-        '..###.#######.#..',
         '..#############..',
+        '..###.#######.#..',
         '#################',
         '..#############..',
         '....#.#...#.#....',
